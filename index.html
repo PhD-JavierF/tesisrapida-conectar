@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap">
 <style>
 :root { --bg:#F3F2EF; --panel:#fff; --ink:#17171B; --muted:#5D5D66; --line:#E1DFDA; --brand:#0E0E11; --accent:#E8740C; --accent2:#E1392D;
-        --ok:#12805C; --ok-soft:#DDF3EA; --err:#B42318; --err-soft:#FDE7E5; --wa:#008069; }
+        --ok:#12805C; --ok-soft:#DDF3EA; --err:#B42318; --err-soft:#FDE7E5; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 Figtree, 'Segoe UI', system-ui, sans-serif; }
 header { background: var(--brand); color: #fff; padding: 28px 16px; }
@@ -29,6 +29,9 @@ button.fb { background: #1877F2; } button:disabled { opacity: .45; cursor: not-a
 .msg { border-radius: 10px; padding: 10px 12px; font-size: 15px; }
 .msg.ok { background: var(--ok-soft); color: var(--ok); } .msg.err { background: var(--err-soft); color: var(--err); } .msg.info { background: #EEF1F6; color: #344054; }
 #registro { display: grid; gap: 8px; }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 20px; }
+details summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+details .paso { border: 0; padding: 14px 0 0; }
 </style>
 </head>
 <body>
@@ -38,29 +41,36 @@ button.fb { background: #1877F2; } button:disabled { opacity: .45; cursor: not-a
   <p>Número 320 856 77 66 · usted sigue usando WhatsApp Business en su celular como siempre.</p>
 </div></header>
 <main>
-  <section class="paso" id="p1">
-    <h2><span class="n">1</span>Clave secreta de la app</h2>
-    <p>Está en developers.facebook.com → su app → <b>Configuración → Básica → Clave secreta de la app → Mostrar</b>. Cópiela y péguela aquí.</p>
-    <div class="fila"><input id="secreto" type="password" autocomplete="off" placeholder="32 letras y números" aria-label="Clave secreta de la app"><button id="guardar" type="button">Guardar clave</button></div>
-    <div id="m1"></div>
-  </section>
-
-  <section class="paso" id="p2">
-    <h2><span class="n">2</span>Conectar el número</h2>
+  <section class="paso" id="py">
+    <h2><span class="n">1</span>Clave API de YCloud</h2>
     <ol>
-      <li>Toque <b>Conectar con Facebook</b> y entre con su cuenta.</li>
-      <li>Elija la empresa <b>Tesis Rápida</b> y la opción de <b>conectar su app de WhatsApp Business existente</b>.</li>
-      <li>Escriba el número <b>320 856 77 66</b>.</li>
-      <li>En su celular, abra <b>WhatsApp Business</b>, abra el mensaje de Meta y toque <b>Conectar</b>. Si le pregunta por el historial, elija compartirlo.</li>
+      <li>En YCloud, primero conecte el 320 856 77 66 con el código QR (WhatsApp accounts → Create Channel → WhatsApp Business APP Coexistence).</li>
+      <li>Luego vaya a <b>Developers → API Keys</b>, cree una clave y cópiela.</li>
+      <li>Péguela aquí y toque <b>Conectar</b>. El chatbot hace el resto solo.</li>
     </ol>
-    <div class="fila"><button id="conectar" class="fb" type="button" disabled>Conectar con Facebook</button></div>
-    <div id="m2"></div>
+    <div class="fila"><input id="ycclave" type="password" autocomplete="off" placeholder="Clave API de YCloud" aria-label="Clave API de YCloud"><button id="ycconectar" type="button">Conectar</button></div>
+    <div id="my"></div>
   </section>
 
   <section class="paso" id="p3">
-    <h2><span class="n">3</span>Resultado</h2>
+    <h2><span class="n">2</span>Resultado</h2>
     <div id="registro"><div class="msg info">Aquí verá cada paso de la conexión.</div></div>
   </section>
+
+  <details>
+    <summary>Otra forma: conexión directa con Meta (solo si su app es proveedor de tecnología)</summary>
+    <section class="paso" id="p1">
+      <h2><span class="n">A</span>Clave secreta de la app de Meta</h2>
+      <p>developers.facebook.com → su app → <b>Configuración → Básica → Clave secreta de la app → Mostrar</b>.</p>
+      <div class="fila"><input id="secreto" type="password" autocomplete="off" placeholder="32 letras y números" aria-label="Clave secreta de la app"><button id="guardar" type="button">Guardar clave</button></div>
+      <div id="m1"></div>
+    </section>
+    <section class="paso" id="p2">
+      <h2><span class="n">B</span>Conectar el número con Facebook</h2>
+      <div class="fila"><button id="conectar" class="fb" type="button" disabled>Conectar con Facebook</button></div>
+      <div id="m2"></div>
+    </section>
+  </details>
 </main>
 <script>
 const FUNCION = 'https://vavvifutclheykhmtute.supabase.co/functions/v1/whatsapp-bot';
@@ -77,16 +87,16 @@ async function post(cuerpo) {
   return r.json();
 }
 function pintar() {
+  const listo = !!estado.conectado;
+  $('py').classList.toggle('hecho', listo && estado.proveedor === 'ycloud');
+  if (listo) aviso('my', 'ok', estado.proveedor === 'ycloud' ? '✓ El chatbot ya está conectado al 320 856 77 66 a través de YCloud.' : '✓ El chatbot ya está conectado.');
   $('p1').classList.toggle('hecho', !!estado.clave);
-  $('p2').classList.toggle('hecho', !!estado.conectado);
   if (estado.clave) { aviso('m1', 'ok', '✓ Clave guardada.'); $('secreto').disabled = $('guardar').disabled = true; }
-  $('conectar').disabled = !(estado.clave && estado.app_id && estado.config_id && window.FB) || estado.conectado;
-  if (estado.conectado) aviso('m2', 'ok', '✓ El número ya está conectado al chatbot.');
-  else if (!estado.app_id || !estado.config_id) aviso('m2', 'info', 'La app de Meta aún se está preparando. Vuelva a abrir esta página en un momento.');
+  $('conectar').disabled = !(estado.clave && estado.app_id && estado.config_id && window.FB) || listo;
 }
 async function cargar() {
   try { estado = await (await fetch(FUNCION)).json(); }
-  catch { aviso('m1', 'err', 'No pude comunicarme con el chatbot. Revise su internet y recargue la página.'); return; }
+  catch { aviso('my', 'err', 'No pude comunicarme con el chatbot. Revise su internet y recargue la página.'); return; }
   if (estado.app_id && !window.fbAsyncInit) {
     window.fbAsyncInit = () => { FB.init({ appId: estado.app_id, autoLogAppEvents: true, xfbml: false, version: 'v25.0' }); pintar(); };
     const s = document.createElement('script'); s.src = 'https://connect.facebook.net/es_LA/sdk.js'; s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
@@ -95,6 +105,23 @@ async function cargar() {
   pintar();
 }
 
+// ── YCloud ──
+$('ycconectar').onclick = async () => {
+  const v = $('ycclave').value.trim(); if (!v) return;
+  $('ycconectar').disabled = true; aviso('my', 'info', 'Conectando con YCloud…');
+  try {
+    const r = await post({ accion: 'conectar_ycloud', api_key: v });
+    if (!r.ok) { aviso('my', 'err', r.error || 'No se pudo conectar.'); $('ycconectar').disabled = false; return; }
+    $('ycclave').value = '';
+    const p = r.pasos || {};
+    registrar('ok', '✓ Número encontrado en YCloud: ' + (p.numero || '+57 320 856 77 66'));
+    registrar('ok', '✓ El chatbot ya recibe los mensajes de los clientes y los que usted escribe desde su celular.');
+    registrar(p.plantilla === true ? 'ok' : 'info', p.plantilla === true ? '✓ Plantilla del aviso enviada a Meta para aprobación.' : 'La plantilla del aviso se revisará aparte.');
+    estado.conectado = true; estado.proveedor = 'ycloud'; pintar();
+  } catch { aviso('my', 'err', 'No pude comunicarme con el chatbot. Intente de nuevo.'); $('ycconectar').disabled = false; }
+};
+
+// ── Meta directo ──
 $('guardar').onclick = async () => {
   const v = $('secreto').value.trim(); if (!v) return;
   $('guardar').disabled = true; aviso('m1', 'info', 'Comprobando la clave con Meta…');
@@ -104,44 +131,32 @@ $('guardar').onclick = async () => {
     if (r.ok) { estado.clave = true; pintar(); } else { aviso('m1', 'err', r.error || 'No se pudo guardar.'); $('guardar').disabled = false; }
   } catch { aviso('m1', 'err', 'No pude comunicarme con el chatbot. Intente de nuevo.'); $('guardar').disabled = false; }
 };
-
 window.addEventListener('message', ev => {
   if (!ev.origin.endsWith('facebook.com')) return;
   let p; try { p = JSON.parse(ev.data); } catch { return; }
   if (p.type !== 'WA_EMBEDDED_SIGNUP') return;
-  if (String(p.event).startsWith('FINISH')) { datos = p.data || {}; registrar('ok', '✓ Facebook terminó el registro de su WhatsApp.'); enviar(); }
-  else if (p.event === 'CANCEL') registrar('err', 'Se cerró la ventana de Facebook en el paso «' + (p.data?.current_step || '?') + '». Puede intentarlo de nuevo.');
+  if (String(p.event).startsWith('FINISH')) { datos = p.data || {}; registrar('ok', '✓ Facebook terminó el registro de su WhatsApp.'); enviarMeta(); }
+  else if (p.event === 'CANCEL') registrar('err', 'Se cerró la ventana de Facebook en el paso «' + (p.data?.current_step || '?') + '».');
   else if (p.event === 'ERROR') registrar('err', 'Facebook informó un error: ' + (p.data?.error_message || 'sin detalle'));
 });
-
-async function enviar(forzar = false) {
+async function enviarMeta(forzar = false) {
   if (enviado || !codigo || (!datos && !forzar)) return;
   enviado = true; clearTimeout(esperaDatos);
   registrar('info', 'Conectando el número al chatbot…');
   try {
     const r = await post({ accion: 'conectar', code: codigo, waba_id: datos?.waba_id || '', phone_number_id: datos?.phone_number_id || '' });
     if (!r.ok) { registrar('err', r.error || 'No se pudo conectar.'); enviado = false; codigo = null; return; }
-    const p = r.pasos || {};
-    registrar('ok', '✓ Número conectado: ' + (p.numero || '320 856 77 66'));
-    registrar(p.webhook === true ? 'ok' : 'err', p.webhook === true ? '✓ El chatbot ya recibe los mensajes.' : 'Falta activar la recepción de mensajes (yo lo reviso).');
-    registrar(p.contactos ? 'ok' : 'info', p.contactos ? '✓ Agenda de contactos solicitada: el bot no molestará a sus clientes guardados.' : 'La agenda se pedirá de nuevo.');
-    registrar(p.plantilla === true ? 'ok' : 'info', p.plantilla === true ? '✓ Plantilla del aviso enviada a Meta para aprobación.' : 'La plantilla del aviso se revisará aparte.');
+    registrar('ok', '✓ Número conectado: ' + (r.pasos?.numero || '320 856 77 66'));
     estado.conectado = true; pintar();
   } catch { registrar('err', 'No pude comunicarme con el chatbot. Intente de nuevo.'); enviado = false; }
 }
-
 $('conectar').onclick = () => {
   codigo = null; datos = null; enviado = false;
   FB.login(resp => {
-    if (resp.authResponse && resp.authResponse.code) {
-      codigo = resp.authResponse.code;
-      enviar();
-      esperaDatos = setTimeout(() => enviar(true), 8000);   // el código vence a los 30 s
-    } else registrar('err', 'No se completó el inicio de sesión con Facebook.');
-  }, {
-    config_id: estado.config_id, response_type: 'code', override_default_response_type: true,
-    extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
-  });
+    if (resp.authResponse && resp.authResponse.code) { codigo = resp.authResponse.code; enviarMeta(); esperaDatos = setTimeout(() => enviarMeta(true), 8000); }
+    else registrar('err', 'No se completó el inicio de sesión con Facebook.');
+  }, { config_id: estado.config_id, response_type: 'code', override_default_response_type: true,
+       extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' } });
 };
 
 cargar();
