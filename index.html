@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Conectar chatbot · TESISRÁPIDA</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap">
+<style>
+:root { --bg:#F3F2EF; --panel:#fff; --ink:#17171B; --muted:#5D5D66; --line:#E1DFDA; --brand:#0E0E11; --accent:#E8740C; --accent2:#E1392D;
+        --ok:#12805C; --ok-soft:#DDF3EA; --err:#B42318; --err-soft:#FDE7E5; --wa:#008069; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 Figtree, 'Segoe UI', system-ui, sans-serif; }
+header { background: var(--brand); color: #fff; padding: 28px 16px; }
+header div, main { max-width: 720px; margin: 0 auto; }
+.marca { font-weight: 800; letter-spacing: .14em; font-size: 14px; } .marca b { color: var(--accent); }
+h1 { margin: 8px 0 4px; font-size: clamp(26px, 5vw, 36px); line-height: 1.1; }
+header p { margin: 0; color: #B9B9C2; }
+main { padding: 24px 16px 48px; display: grid; gap: 18px; }
+.paso { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 12px; }
+.paso h2 { margin: 0; font-size: 19px; display: flex; gap: 10px; align-items: center; }
+.n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 15px; flex: none; }
+.paso.hecho .n { background: var(--ok); }
+.paso p, .paso ol { margin: 0; color: var(--muted); } .paso ol { padding-left: 20px; display: grid; gap: 4px; }
+.fila { display: flex; gap: 10px; flex-wrap: wrap; }
+input { flex: 1; min-width: 0; font: 16px monospace; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; }
+button { font: 700 16px Figtree, sans-serif; border: 0; border-radius: 10px; padding: 12px 18px; background: var(--brand); color: #fff; cursor: pointer; }
+button.fb { background: #1877F2; } button:disabled { opacity: .45; cursor: not-allowed; }
+.msg { border-radius: 10px; padding: 10px 12px; font-size: 15px; }
+.msg.ok { background: var(--ok-soft); color: var(--ok); } .msg.err { background: var(--err-soft); color: var(--err); } .msg.info { background: #EEF1F6; color: #344054; }
+#registro { display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<header><div>
+  <div class="marca">TESIS<b>RÁPIDA</b></div>
+  <h1>Conectar el chatbot a su WhatsApp</h1>
+  <p>Número 320 856 77 66 · usted sigue usando WhatsApp Business en su celular como siempre.</p>
+</div></header>
+<main>
+  <section class="paso" id="p1">
+    <h2><span class="n">1</span>Clave secreta de la app</h2>
+    <p>Está en developers.facebook.com → su app → <b>Configuración → Básica → Clave secreta de la app → Mostrar</b>. Cópiela y péguela aquí.</p>
+    <div class="fila"><input id="secreto" type="password" autocomplete="off" placeholder="32 letras y números" aria-label="Clave secreta de la app"><button id="guardar" type="button">Guardar clave</button></div>
+    <div id="m1"></div>
+  </section>
+
+  <section class="paso" id="p2">
+    <h2><span class="n">2</span>Conectar el número</h2>
+    <ol>
+      <li>Toque <b>Conectar con Facebook</b> y entre con su cuenta.</li>
+      <li>Elija la empresa <b>Tesis Rápida</b> y la opción de <b>conectar su app de WhatsApp Business existente</b>.</li>
+      <li>Escriba el número <b>320 856 77 66</b>.</li>
+      <li>En su celular, abra <b>WhatsApp Business</b>, abra el mensaje de Meta y toque <b>Conectar</b>. Si le pregunta por el historial, elija compartirlo.</li>
+    </ol>
+    <div class="fila"><button id="conectar" class="fb" type="button" disabled>Conectar con Facebook</button></div>
+    <div id="m2"></div>
+  </section>
+
+  <section class="paso" id="p3">
+    <h2><span class="n">3</span>Resultado</h2>
+    <div id="registro"><div class="msg info">Aquí verá cada paso de la conexión.</div></div>
+  </section>
+</main>
+<script>
+const FUNCION = 'https://vavvifutclheykhmtute.supabase.co/functions/v1/whatsapp-bot';
+const $ = id => document.getElementById(id);
+let estado = {}, codigo = null, datos = null, enviado = false, esperaDatos = null;
+
+function aviso(caja, clase, texto) { $(caja).innerHTML = ''; const d = document.createElement('div'); d.className = 'msg ' + clase; d.textContent = texto; $(caja).appendChild(d); }
+function registrar(clase, texto) {
+  const r = $('registro'); if (r.dataset.vacio !== 'no') { r.innerHTML = ''; r.dataset.vacio = 'no'; }
+  const d = document.createElement('div'); d.className = 'msg ' + clase; d.textContent = texto; r.appendChild(d);
+}
+async function post(cuerpo) {
+  const r = await fetch(FUNCION, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) });
+  return r.json();
+}
+function pintar() {
+  $('p1').classList.toggle('hecho', !!estado.clave);
+  $('p2').classList.toggle('hecho', !!estado.conectado);
+  if (estado.clave) { aviso('m1', 'ok', '✓ Clave guardada.'); $('secreto').disabled = $('guardar').disabled = true; }
+  $('conectar').disabled = !(estado.clave && estado.app_id && estado.config_id && window.FB) || estado.conectado;
+  if (estado.conectado) aviso('m2', 'ok', '✓ El número ya está conectado al chatbot.');
+  else if (!estado.app_id || !estado.config_id) aviso('m2', 'info', 'La app de Meta aún se está preparando. Vuelva a abrir esta página en un momento.');
+}
+async function cargar() {
+  try { estado = await (await fetch(FUNCION)).json(); }
+  catch { aviso('m1', 'err', 'No pude comunicarme con el chatbot. Revise su internet y recargue la página.'); return; }
+  if (estado.app_id && !window.fbAsyncInit) {
+    window.fbAsyncInit = () => { FB.init({ appId: estado.app_id, autoLogAppEvents: true, xfbml: false, version: 'v25.0' }); pintar(); };
+    const s = document.createElement('script'); s.src = 'https://connect.facebook.net/es_LA/sdk.js'; s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+    document.head.appendChild(s);
+  }
+  pintar();
+}
+
+$('guardar').onclick = async () => {
+  const v = $('secreto').value.trim(); if (!v) return;
+  $('guardar').disabled = true; aviso('m1', 'info', 'Comprobando la clave con Meta…');
+  try {
+    const r = await post({ accion: 'guardar_secreto', app_secret: v });
+    $('secreto').value = '';
+    if (r.ok) { estado.clave = true; pintar(); } else { aviso('m1', 'err', r.error || 'No se pudo guardar.'); $('guardar').disabled = false; }
+  } catch { aviso('m1', 'err', 'No pude comunicarme con el chatbot. Intente de nuevo.'); $('guardar').disabled = false; }
+};
+
+window.addEventListener('message', ev => {
+  if (!ev.origin.endsWith('facebook.com')) return;
+  let p; try { p = JSON.parse(ev.data); } catch { return; }
+  if (p.type !== 'WA_EMBEDDED_SIGNUP') return;
+  if (String(p.event).startsWith('FINISH')) { datos = p.data || {}; registrar('ok', '✓ Facebook terminó el registro de su WhatsApp.'); enviar(); }
+  else if (p.event === 'CANCEL') registrar('err', 'Se cerró la ventana de Facebook en el paso «' + (p.data?.current_step || '?') + '». Puede intentarlo de nuevo.');
+  else if (p.event === 'ERROR') registrar('err', 'Facebook informó un error: ' + (p.data?.error_message || 'sin detalle'));
+});
+
+async function enviar(forzar = false) {
+  if (enviado || !codigo || (!datos && !forzar)) return;
+  enviado = true; clearTimeout(esperaDatos);
+  registrar('info', 'Conectando el número al chatbot…');
+  try {
+    const r = await post({ accion: 'conectar', code: codigo, waba_id: datos?.waba_id || '', phone_number_id: datos?.phone_number_id || '' });
+    if (!r.ok) { registrar('err', r.error || 'No se pudo conectar.'); enviado = false; codigo = null; return; }
+    const p = r.pasos || {};
+    registrar('ok', '✓ Número conectado: ' + (p.numero || '320 856 77 66'));
+    registrar(p.webhook === true ? 'ok' : 'err', p.webhook === true ? '✓ El chatbot ya recibe los mensajes.' : 'Falta activar la recepción de mensajes (yo lo reviso).');
+    registrar(p.contactos ? 'ok' : 'info', p.contactos ? '✓ Agenda de contactos solicitada: el bot no molestará a sus clientes guardados.' : 'La agenda se pedirá de nuevo.');
+    registrar(p.plantilla === true ? 'ok' : 'info', p.plantilla === true ? '✓ Plantilla del aviso enviada a Meta para aprobación.' : 'La plantilla del aviso se revisará aparte.');
+    estado.conectado = true; pintar();
+  } catch { registrar('err', 'No pude comunicarme con el chatbot. Intente de nuevo.'); enviado = false; }
+}
+
+$('conectar').onclick = () => {
+  codigo = null; datos = null; enviado = false;
+  FB.login(resp => {
+    if (resp.authResponse && resp.authResponse.code) {
+      codigo = resp.authResponse.code;
+      enviar();
+      esperaDatos = setTimeout(() => enviar(true), 8000);   // el código vence a los 30 s
+    } else registrar('err', 'No se completó el inicio de sesión con Facebook.');
+  }, {
+    config_id: estado.config_id, response_type: 'code', override_default_response_type: true,
+    extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
+  });
+};
+
+cargar();
+</script>
+</body>
+</html>
